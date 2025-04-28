@@ -29,7 +29,7 @@ const IncomingJobs = ({ route }) => {
   useEffect(() => {
     console.log("🚀 Route Params -> userId:", userId);
     console.log("🚀 Route Params -> userName:", userName);
-  }, []);
+  }, [userId, userName]);
 
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);

@@ -7,20 +7,20 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
-  Image,
   Alert
 } from "react-native";
-import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import { useNavigation } from "@react-navigation/native";
 
 const BiddingScreen = ({ route }) => {
   const { jobId = "", jobTitle = "Unknown", category = "Uncategorized" } = route.params || {};
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBid, setSelectedBid] = useState(null);
-  const [providerDetails, setProviderDetails] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  const navigation = useNavigation();
 
   useEffect(() => {
     if (!jobId) return;
@@ -32,20 +32,10 @@ const BiddingScreen = ({ route }) => {
 
     const unsubscribe = onSnapshot(
       bidsRef,
-      async (snapshot) => {
-        const bidsData = await Promise.all(snapshot.docs.map(async (doc) => {
-          const bidData = doc.data();
-          // Fetch provider name if not available
-          if (!bidData.serviceProviderName) {
-            const providerDoc = await getDoc(doc(db, "service_providers", bidData.serviceProviderId));
-            if (providerDoc.exists()) {
-              bidData.serviceProviderName = `${providerDoc.data().firstName} ${providerDoc.data().lastName}`;
-            }
-          }
-          return {
-            id: doc.id,
-            ...bidData
-          };
+      (snapshot) => {
+        const bidsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
         }));
         setBids(bidsData);
         setLoading(false);
@@ -59,23 +49,25 @@ const BiddingScreen = ({ route }) => {
     return () => unsubscribe();
   }, [jobId]);
 
-  const viewBidDetails = async (bid) => {
+  const viewBidDetails = (bid) => {
     setSelectedBid(bid);
-    try {
-      const providerDoc = await getDoc(doc(db, "service_providers", bid.serviceProviderId));
-      if (providerDoc.exists()) {
-        setProviderDetails(providerDoc.data());
-      }
-      setModalVisible(true);
-    } catch (error) {
-      console.error("Error fetching provider details:", error);
-    }
+    setModalVisible(true);
   };
 
   const acceptBid = () => {
-    // Implement bid acceptance logic here
     Alert.alert("Bid Accepted", "You have accepted this bid!");
     setModalVisible(false);
+  };
+
+  const viewProviderProfile = () => {
+    if (!selectedBid) return;
+    
+    setModalVisible(false);
+    navigation.navigate("ServiceProviderProfile", {
+      serviceProviderId: selectedBid.serviceProviderId,
+      serviceProviderName: selectedBid.serviceProviderName,
+      // Add any other relevant data you want to pass
+    });
   };
 
   return (
@@ -119,42 +111,16 @@ const BiddingScreen = ({ route }) => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            {providerDetails && (
+            {selectedBid && (
               <>
-                <View style={styles.profileHeader}>
-                  <Image
-                    source={{ uri: providerDetails.profileImage || "https://via.placeholder.com/80" }}
-                    style={styles.profileImage}
-                  />
-                  <Text style={styles.providerName}>
-                    {providerDetails.firstName} {providerDetails.lastName}
-                  </Text>
-                  <Text style={styles.providerRating}>
-                    ⭐ {providerDetails.averageRating?.toFixed(1) || "5.0"} ({providerDetails.totalReviews || 0} reviews)
-                  </Text>
-                </View>
-
-                <View style={styles.detailsSection}>
-                  <View style={styles.detailRow}>
-                    <MaterialIcons name="phone" size={20} color="#FF9901" />
-                    <Text style={styles.detailText}>{providerDetails.phoneNumber}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <MaterialIcons name="badge" size={20} color="#FF9901" />
-                    <Text style={styles.detailText}>{providerDetails.cnic || "Not provided"}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <MaterialIcons name="work" size={20} color="#FF9901" />
-                    <Text style={styles.detailText}>
-                      {providerDetails.verifiedServices?.join(", ") || "No verified services"}
-                    </Text>
-                  </View>
-                </View>
-
                 <View style={styles.bidInfo}>
+                  <Text style={styles.bidLabel}>Service Provider:</Text>
+                  <Text style={styles.bidValue}>{selectedBid.serviceProviderName}</Text>
+                  
                   <Text style={styles.bidLabel}>Bid Amount:</Text>
-                  <Text style={styles.bidValue}>Rs {selectedBid?.providerBid}</Text>
-                  {selectedBid?.bidNotes && (
+                  <Text style={styles.bidValue}>Rs {selectedBid.providerBid}</Text>
+                  
+                  {selectedBid.bidNotes && (
                     <>
                       <Text style={styles.bidLabel}>Notes:</Text>
                       <Text style={styles.bidNotes}>{selectedBid.bidNotes}</Text>
@@ -165,15 +131,19 @@ const BiddingScreen = ({ route }) => {
                 <TouchableOpacity style={styles.acceptButton} onPress={acceptBid}>
                   <Text style={styles.acceptButtonText}>Accept Bid</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity style={styles.providerProfileButton} onPress={viewProviderProfile}>
+                  <Text style={styles.providerProfileButtonText}>View Provider Profile</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.closeButton} 
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
               </>
             )}
-
-            <TouchableOpacity 
-              style={styles.closeButton} 
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -265,39 +235,6 @@ const styles = StyleSheet.create({
     padding: 20,
     maxHeight: "80%",
   },
-  profileHeader: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 10,
-  },
-  providerName: {
-    color: "#FF9901",
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  providerRating: {
-    color: "#FFCC00",
-    fontSize: 14,
-  },
-  detailsSection: {
-    marginBottom: 20,
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  detailText: {
-    color: "#fff",
-    fontSize: 16,
-    marginLeft: 10,
-  },
   bidInfo: {
     backgroundColor: "#333",
     padding: 15,
@@ -328,6 +265,18 @@ const styles = StyleSheet.create({
   },
   acceptButtonText: {
     color: "#000",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  providerProfileButton: {
+    backgroundColor: "#4CAF50",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  providerProfileButtonText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
