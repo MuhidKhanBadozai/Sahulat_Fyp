@@ -17,8 +17,7 @@ import BiddingScreen from './components/serviceprovider/BiddingScreen';
 import HomeServiceProvider from './components/serviceprovider/HomeServiceProvider';
 import ServiceProviderProfile from './components/serviceprovider/ServiceProviderProfile'; 
 import IncomingJobs from './components/serviceprovider/IncomingJobs';
-
-
+import MapScreen from './components/serviceprovider/MapScreen';
 
 import { auth } from './components/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -52,7 +51,7 @@ export default function App() {
               <Stack.Screen name="HomeServiceProvider" component={HomeServiceProvider} />
               <Stack.Screen name="ServiceProviderProfile" component={ServiceProviderProfile} />
               <Stack.Screen name="IncomingJobs" component={IncomingJobs} />
-
+              <Stack.Screen name="MapScreen" component={MapScreen} />
             </React.Fragment>
           ) : (
             <React.Fragment>

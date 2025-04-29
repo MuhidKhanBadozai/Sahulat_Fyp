@@ -17,26 +17,114 @@ import {
   onSnapshot,
   orderBy,
   addDoc,
+  where,
 } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { useNavigation } from "@react-navigation/native";
 
 const screenWidth = Dimensions.get("window").width;
 
 const IncomingJobs = ({ route }) => {
   const { selectedCategory = "", userId = "", userName = "" } = route.params || {};
+  const navigation = useNavigation();
 
-  // ✅ Debugging values
   useEffect(() => {
     console.log("🚀 Route Params -> userId:", userId);
     console.log("🚀 Route Params -> userName:", userName);
   }, [userId, userName]);
 
   const [jobs, setJobs] = useState([]);
+  const [providerData, setProviderData] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [bidAmount, setBidAmount] = useState("");
   const [bidNotes, setBidNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const fetchProviderData = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          console.log("Current User:", user);
+          const docRef = doc(db, "service_providers", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.joinedDate?.seconds) {
+              const date = new Date(data.joinedDate.seconds * 1000);
+              data.formattedJoinedDate = date.toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
+            } else {
+              data.formattedJoinedDate = "N/A";
+            }
+            setProviderData(data);
+          } else {
+            Alert.alert("Error", "No service provider data found.");
+          }
+        } else {
+          Alert.alert("Error", "User is not authenticated.");
+        }
+      } catch (error) {
+        console.error("Error fetching provider data:", error);
+        Alert.alert("Error", error.message);
+      }
+    };
+
+    fetchProviderData();
+  }, []);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      console.log("No authenticated user found.");
+      return;
+    }
+
+    console.log("Listening for accepted bids for user:", user.uid);
+
+    const acceptedBidsQuery = query(
+      collection(db, "incoming_bids"),
+      where("serviceProviderId", "==", user.uid),
+      where("status", "==", "accepted")
+    );
+
+    const unsubscribeAccepted = onSnapshot(
+      acceptedBidsQuery,
+      (snapshot) => {
+        console.log("Snapshot received:", snapshot.docs.length, "documents");
+        snapshot.docChanges().forEach((change) => {
+          console.log("Change detected:", change.type, change.doc.data());
+          if (change.type === "added") {
+            const bid = change.doc.data();
+            Alert.alert(
+              "🎉 Bid Accepted!",
+              `Your bid for "${bid.jobTitle}" has been accepted by the customer!`,
+              [
+                {
+                  text: "OK",
+                  onPress: () => navigation.navigate("MapScreen", { 
+                    bidId: change.doc.id,
+                    jobId: bid.jobId,
+                    customerId: bid.customerId
+                  }),
+                },
+              ]
+            );
+          }
+        });
+      },
+      (error) => {
+        console.error("Error listening for accepted bids:", error);
+      }
+    );
+
+    return () => unsubscribeAccepted();
+  }, [navigation]);
 
   useEffect(() => {
     const q = query(collection(db, "upcoming_jobs"), orderBy("timestamp", "desc"));
@@ -93,8 +181,8 @@ const IncomingJobs = ({ route }) => {
         jobTitle: selectedJob.title,
         customerId: selectedJob.userId,
         customerName: selectedJob.userName || "Customer",
-        serviceProviderId: userId,
-        serviceProviderName: userName || "No Name", // ✅ fixed fallback
+        serviceProviderId: providerData.uid,
+        serviceProviderName: userName || "No Name",
         providerBid: parseFloat(bidAmount),
         customerBid: null,
         bidNotes: bidNotes,
@@ -102,6 +190,7 @@ const IncomingJobs = ({ route }) => {
         status: "pending",
         category: selectedJob.category,
         jobLocation: selectedJob.location,
+        serviceprovider: providerData.firstName + providerData.lastName,
       };
 
       await addDoc(collection(db, "incoming_bids"), bidData);

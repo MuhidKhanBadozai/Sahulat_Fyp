@@ -7,9 +7,17 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
-  Alert
+  Alert,
 } from "react-native";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
 
@@ -19,6 +27,7 @@ const BiddingScreen = ({ route }) => {
   const [loading, setLoading] = useState(true);
   const [selectedBid, setSelectedBid] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [ratings, setRatings] = useState({});
 
   const navigation = useNavigation();
 
@@ -32,12 +41,13 @@ const BiddingScreen = ({ route }) => {
 
     const unsubscribe = onSnapshot(
       bidsRef,
-      (snapshot) => {
+      async (snapshot) => {
         const bidsData = snapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
         setBids(bidsData);
+        await fetchServiceProviderRatings(bidsData);
         setLoading(false);
       },
       (error) => {
@@ -49,25 +59,63 @@ const BiddingScreen = ({ route }) => {
     return () => unsubscribe();
   }, [jobId]);
 
+  const fetchServiceProviderRatings = async (bidsData) => {
+    const ratingPromises = bidsData.map(async (bid) => {
+      if (!bid.serviceProviderId) return null;
+      try {
+        const docRef = doc(db, "service_providers", bid.serviceProviderId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          return {
+            id: bid.serviceProviderId,
+            rating: docSnap.data().rating || "No rating",
+          };
+        }
+      } catch (error) {
+        console.error(`Error fetching rating for ${bid.serviceProviderId}:`, error);
+      }
+      return { id: bid.serviceProviderId, rating: "Unavailable" };
+    });
+
+    const results = await Promise.all(ratingPromises);
+    const ratingsMap = {};
+    results.forEach((result) => {
+      if (result) ratingsMap[result.id] = result.rating;
+    });
+    setRatings(ratingsMap);
+  };
+
   const viewBidDetails = (bid) => {
     setSelectedBid(bid);
     setModalVisible(true);
   };
 
-  const acceptBid = () => {
-    Alert.alert("Bid Accepted", "You have accepted this bid!");
-    setModalVisible(false);
-  };
+  const acceptBid = async () => {
+    if (!selectedBid?.id) return;
 
-  const viewProviderProfile = () => {
-    if (!selectedBid) return;
-    
-    setModalVisible(false);
-    navigation.navigate("ServiceProviderProfile", {
-      serviceProviderId: selectedBid.serviceProviderId,
-      serviceProviderName: selectedBid.serviceProviderName,
-      // Add any other relevant data you want to pass
-    });
+    try {
+      const bidRef = doc(db, "incoming_bids", selectedBid.id);
+
+      await updateDoc(bidRef, {
+        status: "accepted",
+      });
+
+      console.log("Bid accepted with ID:", selectedBid.id);
+      Alert.alert("Bid Accepted", "You have accepted this bid!", [
+        {
+          text: "OK",
+          onPress: () => navigation.navigate("MapScreen", { 
+            bidId: selectedBid.id,
+            jobId: selectedBid.jobId,
+            serviceProviderId: selectedBid.serviceProviderId
+          })
+        }
+      ]);
+      setModalVisible(false);
+    } catch (error) {
+      console.error("Error updating bid:", error);
+      Alert.alert("Error", "Failed to accept the bid.");
+    }
   };
 
   return (
@@ -93,7 +141,7 @@ const BiddingScreen = ({ route }) => {
               onPress={() => viewBidDetails(bid)}
             >
               <View style={styles.bidHeader}>
-                <Text style={styles.bidProvider}>{bid.serviceProviderName || "Service Provider"}</Text>
+                <Text style={styles.bidProvider}>{bid.serviceprovider || "Service Provider"}</Text>
                 <Text style={styles.bidAmount}>Rs {bid.providerBid}</Text>
               </View>
               {bid.bidNotes && <Text style={styles.notes}>{bid.bidNotes}</Text>}
@@ -102,7 +150,6 @@ const BiddingScreen = ({ route }) => {
         </ScrollView>
       )}
 
-      {/* Bid Details Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -115,11 +162,16 @@ const BiddingScreen = ({ route }) => {
               <>
                 <View style={styles.bidInfo}>
                   <Text style={styles.bidLabel}>Service Provider:</Text>
-                  <Text style={styles.bidValue}>{selectedBid.serviceProviderName}</Text>
-                  
+                  <Text style={styles.bidValue}>{selectedBid.serviceprovider}</Text>
+
+                  <Text style={styles.bidLabel}>Service Provider Rating:</Text>
+                  <Text style={styles.bidValue}>
+                    {ratings[selectedBid.serviceProviderId] ?? "Loading..."}
+                  </Text>
+
                   <Text style={styles.bidLabel}>Bid Amount:</Text>
                   <Text style={styles.bidValue}>Rs {selectedBid.providerBid}</Text>
-                  
+
                   {selectedBid.bidNotes && (
                     <>
                       <Text style={styles.bidLabel}>Notes:</Text>
@@ -130,10 +182,6 @@ const BiddingScreen = ({ route }) => {
 
                 <TouchableOpacity style={styles.acceptButton} onPress={acceptBid}>
                   <Text style={styles.acceptButtonText}>Accept Bid</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.providerProfileButton} onPress={viewProviderProfile}>
-                  <Text style={styles.providerProfileButtonText}>View Provider Profile</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -265,18 +313,6 @@ const styles = StyleSheet.create({
   },
   acceptButtonText: {
     color: "#000",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  providerProfileButton: {
-    backgroundColor: "#4CAF50",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  providerProfileButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
