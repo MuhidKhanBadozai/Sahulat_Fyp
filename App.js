@@ -19,6 +19,8 @@ import ServiceProviderProfile from './components/serviceprovider/ServiceProvider
 import IncomingJobs from './components/serviceprovider/IncomingJobs';
 import MapScreen from './components/serviceprovider/MapScreen';
 
+import ChatScreen from './components/chat-server/ChatScreen';
+
 import { auth } from './components/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -52,6 +54,7 @@ export default function App() {
               <Stack.Screen name="ServiceProviderProfile" component={ServiceProviderProfile} />
               <Stack.Screen name="IncomingJobs" component={IncomingJobs} />
               <Stack.Screen name="MapScreen" component={MapScreen} />
+              <Stack.Screen name="ChatScreen" component={ChatScreen} />
             </React.Fragment>
           ) : (
             <React.Fragment>

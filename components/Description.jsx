@@ -66,7 +66,8 @@ const Description = () => {
 
     try {
       const newJobRef = await addDoc(collection(db, "upcoming_jobs"), {
-        userId: user.uid,
+        
+        : user.uid,
         userEmail: user.email,
         userName: userName,
         category: selectedCategory,

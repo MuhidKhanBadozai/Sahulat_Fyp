@@ -179,7 +179,7 @@ const IncomingJobs = ({ route }) => {
       const bidData = {
         jobId: selectedJob.id,
         jobTitle: selectedJob.title,
-        customerId: selectedJob.userId,
+        customerId: selectedJob.userId,//
         customerName: selectedJob.userName || "Customer",
         serviceProviderId: providerData.uid,
         serviceProviderName: userName || "No Name",
