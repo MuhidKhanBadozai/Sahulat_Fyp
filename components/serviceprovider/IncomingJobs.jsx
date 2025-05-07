@@ -98,7 +98,7 @@ const IncomingJobs = ({ route }) => {
       (snapshot) => {
         console.log("Snapshot received:", snapshot.docs.length, "documents");
         snapshot.docChanges().forEach((change) => {
-          console.log("Change detected:", change.type, change.doc.data());
+          console.log("Change detected:", change.type, change.doc.data()); 
           if (change.type === "added") {
             const bid = change.doc.data();
             Alert.alert(
@@ -106,15 +106,20 @@ const IncomingJobs = ({ route }) => {
               `Your bid for "${bid.jobTitle}" has been accepted by the customer!`,
               [
                 {
-                  text: "OK",
-                  onPress: () => navigation.navigate("MapScreen", { 
-                    bidId: change.doc.id,
-                    jobId: bid.jobId,
-                    customerId: bid.customerId
+                  text: "Chat Now",
+                  onPress: () => navigation.navigate("ChatUI", { 
+                    customerId: bid.customerId,
+                    customerName: bid.customerName,
+                    providerId: bid.serviceProviderId,
+                    providerName: bid.serviceProviderName,
+                    jobTitle: bid.jobTitle,
+                    providerPhone: bid.serviceproviderPhoneNumber,
+                    providerBid: bid.providerBid,
                   }),
                 },
               ]
             );
+            
           }
         });
       },
@@ -191,6 +196,7 @@ const IncomingJobs = ({ route }) => {
         category: selectedJob.category,
         jobLocation: selectedJob.location,
         serviceprovider: providerData.firstName + providerData.lastName,
+        serviceproviderPhoneNumber: providerData.phoneNumber,
       };
 
       await addDoc(collection(db, "incoming_bids"), bidData);

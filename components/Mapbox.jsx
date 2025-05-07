@@ -5,20 +5,23 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { signOut } from "firebase/auth";
 import { auth } from "./firebaseConfig";
-import UserProfile from './UserProfile'; // Import UserProfile component
+import UserProfile from './UserProfile';
 
 const screenWidth = Dimensions.get('window').width;
 
 const Mapbox = () => {
   const [mapReady, setMapReady] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const slideAnim = useState(new Animated.Value(-screenWidth))[0]; // Start off-screen
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [userLocation, setUserLocation] = useState("Your Location");
+  const [searchQuery, setSearchQuery] = useState("");
+  const slideAnim = useState(new Animated.Value(-screenWidth))[0];
 
   const navigation = useNavigation();
 
   useEffect(() => {
     const loadMap = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Small delay before rendering map
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setMapReady(true);
     };
     loadMap();
@@ -51,6 +54,25 @@ const Mapbox = () => {
     }
   };
 
+  const handleCategorySelect = (categoryName) => {
+    setSelectedCategory(categoryName);
+  };
+
+  const navigateToDescription = () => {
+    if (!selectedCategory) {
+      Alert.alert("Error", "Please select a service category first");
+      return;
+    }
+    navigation.navigate('Description', {
+      selectedCategory,
+      userLocation
+    });
+  };
+
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+  };
+
   const categories = [
     { id: 1, name: 'Mechanic', icon: require('../assets/mechanic.png') },
     { id: 2, name: 'Taxi', icon: require('../assets/taxi.png') },
@@ -61,13 +83,17 @@ const Mapbox = () => {
     { id: 7, name: 'Petroleum Emergency', icon: require('../assets/petrol.png') },
   ];
 
+  const filteredCategories = categories.filter(category =>
+    category.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.searchBarContainer} onPress={handleMenuPress}>
         <Ionicons name="menu" size={30} color="#888" />
       </TouchableOpacity>
 
-      {mapReady && (
+      {/* {mapReady && (
         <MapView
           style={styles.map}
           initialRegion={{
@@ -85,35 +111,62 @@ const Mapbox = () => {
         </MapView>
       )}
 
-      {/* Animated UserProfile Overlay */}
       {showProfile && (
         <Animated.View style={[styles.profileOverlay, { transform: [{ translateX: slideAnim }] }]}>
           <UserProfile onClose={handleCloseProfile} onConfirmLogout={confirmLogout} />
         </Animated.View>
-      )}
+      )} */}
 
-      {/* Bottom Container */}
       <View style={styles.bottomContainer}>
         <Text style={styles.categories}>Choose Your Service</Text>
+
+        <View style={styles.inputContainer}>
+          <Ionicons name="search" size={20} color="gray" />
+          <TextInput
+            style={styles.input}
+            placeholder="Search Service"
+            placeholderTextColor="#aaa"
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
+        </View>
+
         <View style={styles.inputContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {categories.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.categoryButton}>
-                <Image source={item.icon} style={styles.icon} />
+            {filteredCategories.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.categoryButton,
+                  selectedCategory === item.name && styles.selectedCategoryButton
+                ]}
+                onPress={() => handleCategorySelect(item.name)}
+              >
+                <Image
+                  source={item.icon}
+                  style={[
+                    styles.icon,
+                    selectedCategory === item.name && styles.selectedIcon
+                  ]}
+                />
                 <Text style={styles.categoryText}>{item.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
+
         <View style={styles.inputContainer}>
           <Ionicons name="location" size={20} color="orange" />
-          <TextInput style={styles.input} placeholder="Your Location" placeholderTextColor="#aaa" />
+          <TextInput
+            style={styles.input}
+            placeholder="Your Location"
+            placeholderTextColor="#aaa"
+            value={userLocation}
+            onChangeText={setUserLocation}
+          />
         </View>
-        <View style={styles.inputContainer}>
-          <Ionicons name="search" size={20} color="gray" />
-          <TextInput style={styles.input} placeholder="Search Service" placeholderTextColor="#aaa" />
-        </View>
-        <TouchableOpacity style={styles.findButton} onPress={() => navigation.navigate('Description')}>
+
+        <TouchableOpacity style={styles.findButton} onPress={navigateToDescription}>
           <Text style={styles.buttonText}>Go to Bidding</Text>
           <Ionicons name="options-outline" size={20} color="black" style={styles.filterIcon} />
         </TouchableOpacity>
@@ -156,8 +209,15 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 10,
     marginBottom: 10,
+    width: '100%',
   },
-  input: { flex: 1, color: 'white', marginLeft: 10 },
+  input: {
+    flex: 1,
+    color: 'white',
+    marginLeft: 10,
+    height: 40, // FIXED: Increased from 20 to 40
+    fontSize: 16,
+  },
   findButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,6 +226,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     marginTop: 10,
+    width: '100%',
   },
   buttonText: { fontSize: 18, fontWeight: 'bold', color: 'black' },
   filterIcon: { marginLeft: 10 },
@@ -178,10 +239,31 @@ const styles = StyleSheet.create({
     marginRight: 10,
     width: 100,
   },
-  icon: { width: 40, height: 40, backgroundColor: 'white', marginBottom: 5 },
-  categoryText: { color: 'black', fontSize: 12, textAlign: 'center' },
-  categories: { color: 'white', fontSize: 32, padding: 10 },
-
+  selectedCategoryButton: {
+    backgroundColor: '#FF9901',
+  },
+  icon: {
+    width: 50,
+    height: 50,
+    borderRadius: 0, // FIXED: Rounded properly
+    marginBottom: 5,
+    resizeMode: 'cover',
+  },
+  selectedIcon: {
+    borderColor: '#222',
+    borderWidth: 2,
+  },
+  categoryText: {
+    color: 'black',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  categories: {
+    color: 'white',
+    fontSize: 24,
+    padding: 10,
+    alignSelf: 'flex-start',
+  },
   profileOverlay: {
     position: 'absolute',
     top: 0,

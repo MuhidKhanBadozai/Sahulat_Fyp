@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { auth } from '../firebaseConfig'; // make sure path matches your config file
+import { auth } from '../firebaseConfig'; // ✅ adjust path if your firebase config file is elsewhere
 
-const MapScreen = ({ navigation, route }) => {
+const MapScreen = ({ navigation }) => {
   const [mapReady, setMapReady] = useState(false);
-  const currentUser = auth.currentUser;
-  const senderId = currentUser?.email; // Or use UID: currentUser?.uid
-  const receiverId = route.params?.otherUserId || "provider456"; // Replace with dynamic value as needed
 
   useEffect(() => {
     const loadMap = async () => {
@@ -19,11 +16,32 @@ const MapScreen = ({ navigation, route }) => {
   }, []);
 
   const handleMessagePress = () => {
-    if (!senderId || !receiverId) return;
+    const customerId = auth.currentUser?.uid || "unknown_customer_id";
+    const customerName = auth.currentUser?.displayName || "Customer";
 
-    navigation.navigate("ChatScreen", {
-      senderId,
-      receiverId,
+    // Hardcoded for now, replace with dynamic data as needed   ss
+    const providerId = "example_provider_id";
+    const providerName = "Service Provider";
+    const providerPhone = "+1234567890";
+    const jobTitle = "AC Repair";
+
+    navigation.navigate('ChatUI', {
+      customerId,
+      customerName,
+      providerId,
+      providerName,
+      providerPhone,
+      jobTitle,
+    });
+  };
+
+  const handleJobDone = () => {
+    const jobId = "example_job_id"; // Replace with real job ID
+    const userType = "provider";    // Replace with actual user type
+
+    navigation.navigate("JobDone", {
+      jobId,
+      userType,
     });
   };
 
@@ -46,8 +64,12 @@ const MapScreen = ({ navigation, route }) => {
           />
         </MapView>
       )}
-      <TouchableOpacity style={styles.messageButton} onPress={handleMessagePress}>
+      {/* <TouchableOpacity style={styles.messageButton} onPress={handleMessagePress}>
         <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+      </TouchableOpacity> */}
+
+      <TouchableOpacity style={styles.jobDoneButton} onPress={handleJobDone}>
+        <Text style={styles.jobDoneText}>Job Done</Text>
       </TouchableOpacity>
     </View>
   );
@@ -63,12 +85,27 @@ const styles = StyleSheet.create({
   },
   messageButton: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 80,
     left: 20,
     backgroundColor: '#007AFF',
     borderRadius: 25,
     padding: 12,
     elevation: 5,
+  },
+  jobDoneButton: {
+    position: 'absolute',
+    bottom: 80,
+    alignSelf: 'center',
+    backgroundColor: '#FF8C00',
+    borderRadius: 30,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    elevation: 5,
+  },
+  jobDoneText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

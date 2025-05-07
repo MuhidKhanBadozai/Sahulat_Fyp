@@ -10,16 +10,18 @@ import {
 import { Menu, Divider } from "react-native-paper";
 import { collection, addDoc, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebaseConfig";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+
 
 const Description = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(route.params?.userLocation || "");
   const [price, setPrice] = useState("");
   const [visible, setVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("Select Category");
+  const [selectedCategory, setSelectedCategory] = useState(route.params?.selectedCategory || "Select Category");
   const [userName, setUserName] = useState("");
   const [jobId, setJobId] = useState("");
 
@@ -66,8 +68,7 @@ const Description = () => {
 
     try {
       const newJobRef = await addDoc(collection(db, "upcoming_jobs"), {
-        
-        : user.uid,
+        userId: user.uid,
         userEmail: user.email,
         userName: userName,
         category: selectedCategory,
@@ -78,12 +79,12 @@ const Description = () => {
         timestamp: new Date(),
       });
 
-      setJobId(newJobRef.id);  // Save the jobId from Firestore
+      setJobId(newJobRef.id);
 
       Alert.alert("Success", "Service details stored!");
 
       navigation.navigate("BiddingScreen", {
-        jobId: newJobRef.id,  // Pass jobId to BiddingScreen
+        jobId: newJobRef.id,
         jobTitle: title,
         category: selectedCategory,
       });

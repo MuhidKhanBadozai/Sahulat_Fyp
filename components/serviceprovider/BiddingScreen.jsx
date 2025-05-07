@@ -18,11 +18,18 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db,auth } from "../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
 
 const BiddingScreen = ({ route }) => {
-  const { jobId = "", jobTitle = "Unknown", category = "Uncategorized" } = route.params || {};
+  const {
+    jobId = "",
+    jobTitle = "Unknown",
+    category = "Uncategorized",
+    customerId = auth.currentUser?.uid,
+    customerName = "Customer",
+  } = route.params || {};
+
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBid, setSelectedBid] = useState(null);
@@ -100,17 +107,27 @@ const BiddingScreen = ({ route }) => {
         status: "accepted",
       });
 
-      console.log("Bid accepted with ID:", selectedBid.id);
-      Alert.alert("Bid Accepted", "You have accepted this bid!", [
-        {
-          text: "OK",
-          onPress: () => navigation.navigate("MapScreen", { 
-            bidId: selectedBid.id,
-            jobId: selectedBid.jobId,
-            serviceProviderId: selectedBid.serviceProviderId
-          })
-        }
-      ]);
+      Alert.alert(
+        "🎉 Bid Accepted!",
+        `You have accepted the bid by "${selectedBid.serviceprovider}"`,
+        [
+          {
+            text: "Go to Chat",
+            onPress: () => {
+              navigation.navigate("ChatUI", {
+                customerId: customerId,
+                customerName: customerName,
+                providerId: selectedBid.serviceProviderId,
+                providerName: selectedBid.serviceprovider,
+                jobTitle: selectedBid.jobTitle || jobTitle,
+                providerPhone: selectedBid.providerPhone,
+              });
+            },
+          },
+
+        ]
+      );
+
       setModalVisible(false);
     } catch (error) {
       console.error("Error updating bid:", error);
@@ -135,13 +152,15 @@ const BiddingScreen = ({ route }) => {
       ) : (
         <ScrollView contentContainerStyle={styles.bidsList}>
           {bids.map((bid) => (
-            <TouchableOpacity 
-              key={bid.id} 
+            <TouchableOpacity
+              key={bid.id}
               style={styles.bidCard}
               onPress={() => viewBidDetails(bid)}
             >
               <View style={styles.bidHeader}>
-                <Text style={styles.bidProvider}>{bid.serviceprovider || "Service Provider"}</Text>
+                <Text style={styles.bidProvider}>
+                  {bid.serviceprovider || "Service Provider"}
+                </Text>
                 <Text style={styles.bidAmount}>Rs {bid.providerBid}</Text>
               </View>
               {bid.bidNotes && <Text style={styles.notes}>{bid.bidNotes}</Text>}
@@ -184,8 +203,8 @@ const BiddingScreen = ({ route }) => {
                   <Text style={styles.acceptButtonText}>Accept Bid</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={styles.closeButton} 
+                <TouchableOpacity
+                  style={styles.closeButton}
                   onPress={() => setModalVisible(false)}
                 >
                   <Text style={styles.closeButtonText}>Close</Text>
