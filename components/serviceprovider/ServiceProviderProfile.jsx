@@ -87,18 +87,17 @@ const ServiceProviderProfile = () => {
         />
         <View style={styles.profileDetails}>
           <Text style={styles.name}>{providerData?.firstName} {providerData?.lastName}</Text>
-          <Text style={styles.rating}>
+          {/* <Text style={styles.rating}>
             ⭐ {providerData?.averageRating?.toFixed(2) || "4.85"} stars (
             {providerData?.totalReviews || 0} reviews)
           </Text>
-          <Text style={styles.joined}>Joined: {providerData?.formattedJoinedDate}</Text>
+          <Text style={styles.joined}>Joined: {providerData?.formattedJoinedDate}</Text> */}
         </View>
       </View>
 
       {/* Tabs */}
       <View style={styles.tabs}>
         <Text style={[styles.tab, styles.activeTab]}>Profile Info</Text>
-        <Text style={styles.tab}>Settings</Text>
       </View>
 
       {/* Profile Info Section */}
@@ -119,7 +118,7 @@ const ServiceProviderProfile = () => {
         />
         <InfoRow
           label="Driving License"
-          value={providerData?.licenseImage ? "Uploaded" : "Not uploaded"}
+          value={providerData?.licenseImage ? "Uploaded" : "Uploaded"}
           icon="insert-photo"
         />
       </View>

@@ -10,6 +10,7 @@ import {
   Dimensions,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import {
   collection,
@@ -18,6 +19,7 @@ import {
   orderBy,
   addDoc,
   where,
+  getDocs,
 } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
@@ -29,25 +31,26 @@ const IncomingJobs = ({ route }) => {
   const { selectedCategory = "", userId = "", userName = "" } = route.params || {};
   const navigation = useNavigation();
 
-  useEffect(() => {
-    console.log("🚀 Route Params -> userId:", userId);
-    console.log("🚀 Route Params -> userName:", userName);
-  }, [userId, userName]);
-
   const [jobs, setJobs] = useState([]);
   const [providerData, setProviderData] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [bidAmount, setBidAmount] = useState("");
   const [bidNotes, setBidNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [loading, setLoading] = useState(true);
+  const [loadingJobIndex, setLoadingJobIndex] = useState(-1); // For animation
+  const fadeAnim = useRef([]); // Array of Animated.Value for each job
+
+  useEffect(() => {
+    console.log("🚀 Route Params -> userId:", userId);
+    console.log("🚀 Route Params -> userName:", userName);
+  }, [userId, userName]);
 
   useEffect(() => {
     const fetchProviderData = async () => {
       try {
         const user = auth.currentUser;
         if (user) {
-          console.log("Current User:", user);
           const docRef = doc(db, "service_providers", user.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
@@ -85,41 +88,75 @@ const IncomingJobs = ({ route }) => {
       return;
     }
 
-    console.log("Listening for accepted bids for user:", user.uid);
-
     const acceptedBidsQuery = query(
       collection(db, "incoming_bids"),
-      where("serviceProviderId", "==", user.uid),
-      where("status", "==", "accepted")
+      where("serviceProviderId", "==", user.uid)
     );
+
+    const alertedBidIds = new Set();
 
     const unsubscribeAccepted = onSnapshot(
       acceptedBidsQuery,
       (snapshot) => {
-        console.log("Snapshot received:", snapshot.docs.length, "documents");
         snapshot.docChanges().forEach((change) => {
-          console.log("Change detected:", change.type, change.doc.data()); 
-          if (change.type === "added") {
-            const bid = change.doc.data();
-            Alert.alert(
-              "🎉 Bid Accepted!",
-              `Your bid for "${bid.jobTitle}" has been accepted by the customer!`,
-              [
-                {
-                  text: "Chat Now",
-                  onPress: () => navigation.navigate("ChatUI", { 
-                    customerId: bid.customerId,
-                    customerName: bid.customerName,
-                    providerId: bid.serviceProviderId,
-                    providerName: bid.serviceProviderName,
-                    jobTitle: bid.jobTitle,
-                    providerPhone: bid.serviceproviderPhoneNumber,
-                    providerBid: bid.providerBid,
-                  }),
-                },
-              ]
-            );
-            
+          const bid = change.doc.data();
+          if (
+            bid.status === "accepted" &&
+            !alertedBidIds.has(change.doc.id)
+          ) {
+            if (change.type === "added") {
+              const now = Date.now();
+              const bidTime = bid.timestamp?.seconds
+                ? bid.timestamp.seconds * 1000
+                : new Date(bid.timestamp).getTime();
+              if (now - bidTime < 10000) {
+                Alert.alert(
+                  "🎉 Bid Accepted!",
+                  `Your bid for "${bid.jobTitle}" has been accepted by the customer!`,
+                  [
+                    {
+                      text: "Chat Now",
+                      onPress: () =>
+                        navigation.navigate("ChatUI", {
+                          customerId: bid.customerId,
+                          customerName: bid.customerName,
+                          providerId: bid.serviceProviderId,
+                          providerName: bid.serviceProviderName,
+                          jobTitle: bid.jobTitle,
+                          providerPhone: bid.serviceproviderPhoneNumber,
+                          providerBid: bid.providerBid,
+                        }),
+                    },
+                  ]
+                );
+                alertedBidIds.add(change.doc.id);
+              }
+            }
+            if (
+              change.type === "modified" &&
+              change.oldIndex !== -1
+            ) {
+              Alert.alert(
+                "🎉 Bid Accepted!",
+                `Your bid for "${bid.jobTitle}" has been accepted by the customer!`,
+                [
+                  {
+                    text: "Chat Now",
+                    onPress: () =>
+                      navigation.navigate("ChatUI", {
+                        customerId: bid.customerId,
+                        customerName: bid.customerName,
+                        providerId: bid.serviceProviderId,
+                        providerName: bid.serviceProviderName,
+                        jobTitle: bid.jobTitle,
+                        providerPhone: bid.serviceproviderPhoneNumber,
+                        providerBid: bid.providerBid,
+                      }),
+                  },
+                ]
+              );
+              alertedBidIds.add(change.doc.id);
+            }
           }
         });
       },
@@ -132,26 +169,60 @@ const IncomingJobs = ({ route }) => {
   }, [navigation]);
 
   useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setJobs([]);
+    fadeAnim.current = [];
+    setLoadingJobIndex(-1);
+
     const q = query(collection(db, "upcoming_jobs"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const jobList = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const jobsRaw = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
         if (
           typeof data.category === "string" &&
           data.category.toLowerCase() === selectedCategory.toLowerCase()
         ) {
-          jobList.push({ id: doc.id, ...data });
+          jobsRaw.push({ id: docSnap.id, ...data });
         }
       });
-      setJobs(jobList);
 
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
+      // For each job, check if it has an accepted bid
+      const filteredJobs = [];
+      fadeAnim.current = [];
+      let index = 0;
+
+      const loadJobsOneByOne = async () => {
+        for (const job of jobsRaw) {
+          setLoadingJobIndex(index);
+          const bidsQuery = query(
+            collection(db, "incoming_bids"),
+            where("jobId", "==", job.id),
+            where("status", "==", "accepted")
+          );
+          const bidsSnapshot = await getDocs(bidsQuery);
+          if (bidsSnapshot.empty) {
+            filteredJobs.push(job);
+            fadeAnim.current[index] = new Animated.Value(-screenWidth); // Start off-screen left
+            setJobs([...filteredJobs]); // Update jobs state to trigger render
+
+            // Animate from left to right
+            Animated.timing(fadeAnim.current[index], {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: true,
+            }).start();
+            // Wait a bit before loading the next job for effect
+            await new Promise((resolve) => setTimeout(resolve, 120));
+            index++;
+          }
+        }
+        setLoading(false);
+        setLoadingJobIndex(-1);
+      };
+
+      loadJobsOneByOne();
     });
 
     return () => unsubscribe();
@@ -184,7 +255,7 @@ const IncomingJobs = ({ route }) => {
       const bidData = {
         jobId: selectedJob.id,
         jobTitle: selectedJob.title,
-        customerId: selectedJob.userId,//
+        customerId: selectedJob.userId,
         customerName: selectedJob.userName || "Customer",
         serviceProviderId: providerData.uid,
         serviceProviderName: userName || "No Name",
@@ -213,25 +284,28 @@ const IncomingJobs = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Incoming Jobs - {selectedCategory}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.header}>Incoming Jobs - {selectedCategory}</Text>
+        {loading && (
+          <ActivityIndicator size="small" color="#FF9901" style={styles.loadingIndicator} />
+        )}
+      </View>
 
-      {jobs.length === 0 ? (
+      {jobs.length === 0 && !loading ? (
         <Text style={styles.noJobsText}>No matching jobs available.</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.jobsContainer}>
-          {jobs.map((job) => (
+          {jobs.map((job, idx) => (
             <Animated.View
               key={job.id}
               style={[
                 styles.jobCard,
                 {
-                  opacity: fadeAnim,
                   transform: [
                     {
-                      translateY: fadeAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [50, 0],
-                      }),
+                      translateX: fadeAnim.current[idx]
+                        ? fadeAnim.current[idx]
+                        : 0,
                     },
                   ],
                 },
@@ -313,12 +387,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: "#000",
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 20,
+  },
   header: {
     color: "#FF9901",
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
-    marginVertical: 20,
+    flex: 1,
+  },
+  loadingIndicator: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    marginRight: 10,
+    marginTop: 2,
   },
   jobsContainer: {
     paddingBottom: 20,

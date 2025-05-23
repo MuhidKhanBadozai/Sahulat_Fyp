@@ -61,31 +61,30 @@ const UserProfile = ({ onClose }) => {
                     <Text style={styles.fullName}>{userData?.firstName} {userData?.lastName}</Text>
                     <Text style={styles.email}>{userData?.email}</Text>
                 </View>
-
-
-
             </View>
 
             <View style={styles.menuContainer}>
-                <MenuItem icon="person-outline" text={`Name: ${userData?.firstName}`} />
-                <MenuItem icon="mail-outline" text={`Email: ${userData?.email}`} />
-                <MenuItem icon="call-outline" text={`Phone Number: ${userData?.phoneNumber}`} />
+                <MenuItem style={styles.space} icon="person-outline" text={`Name: ${userData?.firstName}`} />
+                <MenuItem style={styles.space} icon="mail-outline" text={`Email: ${userData?.email}`} />
+                <MenuItem style={styles.space} icon="call-outline" text={`Phone Number: ${userData?.phoneNumber}`} />
 
-                <MenuItem icon="location-outline" text="Location" />
+                {/* <MenuItem icon="location-outline" text="Location" /> */}
 
                 {/* <MenuItem icon="download-outline" text="Downloads" /> */}
-                <MenuItem icon="globe-outline" text="Languages" />
+                {/* <MenuItem icon="globe-outline" text="Languages" /> */}
                 {/* <MenuItem icon="tv-outline" text="Subscription" /> */}
-                <MenuItem icon="options-outline" text="Display" />
+                {/* <MenuItem icon="options-outline" text="Display" />
                 <MenuItem icon="trash-outline" text="Clear Cache" />
-                <MenuItem icon="time-outline" text="Clear History" />
+                <MenuItem icon="time-outline" text="Clear History" /> */}
             </View>
 
-            <TouchableOpacity style={styles.logoutButton} >
+            <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={() => navigation.navigate("ServiceProviderLogin")}
+            >
                 <Ionicons name="construct-outline" size={20} color="black" />
                 <Text style={styles.logoutText}>Work As Service Provider</Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                 <Ionicons name="log-out-outline" size={20} color="black" />
                 <Text style={styles.logoutText}>Log Out</Text>
@@ -98,7 +97,7 @@ const MenuItem = ({ icon, text }) => (
     <TouchableOpacity style={styles.menuItem}>
         <Ionicons name={icon} size={24} color="black" style={styles.menuIcon} />
         <Text style={styles.menuText}>{text}</Text>
-        <Ionicons name="chevron-forward-outline" size={20} color="black" />
+        {/* <Ionicons name="chevron-forward-outline" size={20} color="black" /> */}
     </TouchableOpacity>
 );
 
@@ -119,7 +118,8 @@ const styles = StyleSheet.create({
     menuText: { flex: 1, fontSize: 16 },
     logoutButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 15, marginTop: 30, backgroundColor: "#FF9901", borderRadius: 10 },
     logoutText: { marginLeft: 10, fontSize: 18, fontWeight: "bold" },
-    loader: { flex: 1, justifyContent: "center" }
+    loader: { flex: 1, justifyContent: "center" },
+    space: { padding: 50 },
 });
 
 export default UserProfile;

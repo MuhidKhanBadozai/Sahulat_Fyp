@@ -121,6 +121,7 @@ const BiddingScreen = ({ route }) => {
                 providerName: selectedBid.serviceprovider,
                 jobTitle: selectedBid.jobTitle || jobTitle,
                 providerPhone: selectedBid.providerPhone,
+                providerBid: selectedBid.providerBid,
               });
             },
           },
@@ -183,10 +184,10 @@ const BiddingScreen = ({ route }) => {
                   <Text style={styles.bidLabel}>Service Provider:</Text>
                   <Text style={styles.bidValue}>{selectedBid.serviceprovider}</Text>
 
-                  <Text style={styles.bidLabel}>Service Provider Rating:</Text>
+                  {/* <Text style={styles.bidLabel}>Service Provider Rating:</Text>
                   <Text style={styles.bidValue}>
                     {ratings[selectedBid.serviceProviderId] ?? "Loading..."}
-                  </Text>
+                  </Text> */}
 
                   <Text style={styles.bidLabel}>Bid Amount:</Text>
                   <Text style={styles.bidValue}>Rs {selectedBid.providerBid}</Text>

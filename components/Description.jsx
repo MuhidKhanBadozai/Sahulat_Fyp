@@ -6,12 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Keyboard,
 } from "react-native";
 import { Menu, Divider } from "react-native-paper";
 import { collection, addDoc, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebaseConfig";
 import { useNavigation, useRoute } from "@react-navigation/native";
-
 
 const Description = () => {
   const navigation = useNavigation();
@@ -24,6 +27,7 @@ const Description = () => {
   const [selectedCategory, setSelectedCategory] = useState(route.params?.selectedCategory || "Select Category");
   const [userName, setUserName] = useState("");
   const [jobId, setJobId] = useState("");
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const categories = [
     "Mechanic",
@@ -51,6 +55,20 @@ const Description = () => {
       }
     };
     fetchUserName();
+  }, []);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
+      setIsKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
   }, []);
 
   const handleSaveDetails = async () => {
@@ -100,84 +118,94 @@ const Description = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Sahulat Details</Text>
-
-      <Text style={styles.label}>Category</Text>
-      <Menu
-        visible={visible}
-        onDismiss={() => setVisible(false)}
-        anchor={
-          <TouchableOpacity style={styles.input} onPress={() => setVisible(true)}>
-            <Text style={{ color: "#fff" }}>{selectedCategory}</Text>
-          </TouchableOpacity>
-        }
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: "#111" }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={isKeyboardVisible}
       >
-        {categories.map((category, index) => (
-          <React.Fragment key={index}>
-            <Menu.Item
-              onPress={() => {
-                setSelectedCategory(category);
-                setVisible(false);
-              }}
-              title={category}
-            />
-            {index !== categories.length - 1 && <Divider />}
-          </React.Fragment>
-        ))}
-      </Menu>
+        <Text style={styles.header}>Sahulat Details</Text>
 
-      <Text style={styles.label}>Sahulat Title</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter title"
-        placeholderTextColor="#aaa"
-        value={title}
-        onChangeText={setTitle}
-      />
+        <Text style={styles.label}>Category</Text>
+        <Menu
+          visible={visible}
+          onDismiss={() => setVisible(false)}
+          anchor={
+            <TouchableOpacity style={styles.input} onPress={() => setVisible(true)}>
+              <Text style={{ color: "#fff" }}>{selectedCategory}</Text>
+            </TouchableOpacity>
+          }
+        >
+          {categories.map((category, index) => (
+            <React.Fragment key={index}>
+              <Menu.Item
+                onPress={() => {
+                  setSelectedCategory(category);
+                  setVisible(false);
+                }}
+                title={category}
+              />
+              {index !== categories.length - 1 && <Divider />}
+            </React.Fragment>
+          ))}
+        </Menu>
 
-      <Text style={styles.label}>Add Description</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Describe your service"
-        placeholderTextColor="#aaa"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
-
-      <Text style={styles.label}>Add Your Location</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter location"
-        placeholderTextColor="#aaa"
-        value={location}
-        onChangeText={setLocation}
-      />
-
-      <Text style={styles.label}>Add Your Price</Text>
-      <View style={styles.priceContainer}>
-        <Text style={styles.currency}>Rs</Text>
+        <Text style={styles.label}>Sahulat Title</Text>
         <TextInput
-          style={styles.priceInput}
-          placeholder="Enter price"
+          style={styles.input}
+          placeholder="Enter title"
           placeholderTextColor="#aaa"
-          keyboardType="numeric"
-          value={price}
-          onChangeText={setPrice}
+          value={title}
+          onChangeText={setTitle}
         />
-      </View>
 
-      <TouchableOpacity style={styles.nextButton} onPress={handleSaveDetails}>
-        <Text style={styles.nextButtonText}>Save Details</Text>
-      </TouchableOpacity>
-    </View>
+        <Text style={styles.label}>Add Description</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Describe your service"
+          placeholderTextColor="#aaa"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
+
+        <Text style={styles.label}>Add Your Location</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter location"
+          placeholderTextColor="#aaa"
+          value={location}
+          onChangeText={setLocation}
+        />
+
+        <Text style={styles.label}>Add Your Price</Text>
+        <View style={styles.priceContainer}>
+          <Text style={styles.currency}>Rs</Text>
+          <TextInput
+            style={styles.priceInput}
+            placeholder="Enter price"
+            placeholderTextColor="#aaa"
+            keyboardType="numeric"
+            value={price}
+            onChangeText={setPrice}
+          />
+        </View>
+
+        <TouchableOpacity style={styles.nextButton} onPress={handleSaveDetails}>
+          <Text style={styles.nextButtonText}>Save Details</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingTop: 80,
     backgroundColor: "#111",
     padding: 20,

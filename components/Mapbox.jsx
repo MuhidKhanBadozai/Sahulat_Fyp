@@ -93,29 +93,29 @@ const Mapbox = () => {
         <Ionicons name="menu" size={30} color="#888" />
       </TouchableOpacity>
 
-      {/* {mapReady && (
+      {mapReady && (
         <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: 31.5154,
-            longitude: 74.3639,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-        >
-          <Marker
-            coordinate={{ latitude: 31.5154, longitude: 74.3639 }}
-            title="Lahore Garrison University"
-            description="This is a marker example"
-          />
-        </MapView>
+  style={styles.map}
+  initialRegion={{
+    latitude: 31.4945,
+    longitude: 74.3534,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  }}
+>
+  <Marker
+    coordinate={{ latitude: 31.4945, longitude: 74.3534 }}
+    title="Lahore Garrison University"
+    description="Main Campus, Sector C, DHA Phase 6, Lahore"
+  />
+</MapView>
       )}
 
       {showProfile && (
         <Animated.View style={[styles.profileOverlay, { transform: [{ translateX: slideAnim }] }]}>
           <UserProfile onClose={handleCloseProfile} onConfirmLogout={confirmLogout} />
         </Animated.View>
-      )} */}
+      )}
 
       <View style={styles.bottomContainer}>
         <Text style={styles.categories}>Choose Your Service</Text>
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
   selectedIcon: {
     borderColor: '#222',
-    borderWidth: 2,
+    borderWidth: 0,
   },
   categoryText: {
     color: 'black',

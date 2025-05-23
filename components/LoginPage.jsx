@@ -24,11 +24,9 @@ const LoginPage = () => {
         </Text>
       </View>
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.button1}>
-          <Text style={styles.buttonText}>Continue with Phone</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button2} onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.buttonText}>Continue with Google</Text>
+        
+        <TouchableOpacity style={styles.button1} onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.buttonText}>Continue to Login</Text>
         </TouchableOpacity>
         <Text style={styles.termsText}>
           Joining our app means you agree with our Terms of Use and Privacy Policy
@@ -65,7 +63,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingBottom: 50,
+    paddingBottom: 10,
   },
   tagline: {
     width: 363,

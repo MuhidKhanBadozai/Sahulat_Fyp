@@ -37,7 +37,7 @@ const ChatUI = ({ route }) => {
     customerName,
     providerId,
     providerName,
-    providerPhone,
+    providerPhone: routePhone,
     providerBid,
     jobTitle,
   } = route?.params || {};
@@ -65,6 +65,7 @@ const ChatUI = ({ route }) => {
     providerConfirmed: false,
   });
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [fetchedPhone, setFetchedPhone] = useState(routePhone || '');
 
   const jobId = `${customerId}_${providerId}_${jobTitle.replace(/\s+/g, '_')}`;
 
@@ -97,11 +98,28 @@ const ChatUI = ({ route }) => {
       }
     });
 
+    // Fetch provider phone number if not provided
+    if (!routePhone && providerId) {
+      const fetchPhone = async () => {
+        try {
+          const providerRef = doc(db, 'service_providers', providerId);
+          const providerSnap = await getDoc(providerRef);
+          if (providerSnap.exists()) {
+            const phone = providerSnap.data().phoneNumber;
+            setFetchedPhone(phone);
+          }
+        } catch (err) {
+          console.error('Error fetching phone:', err);
+        }
+      };
+      fetchPhone();
+    }
+
     return () => {
       unsubscribeMessages();
       unsubscribeJobStatus();
     };
-  }, [senderId, chatPartnerId, jobId]);
+  }, [senderId, chatPartnerId, jobId, providerId]);
 
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -120,16 +138,12 @@ const ChatUI = ({ route }) => {
   };
 
   const copyPhoneToClipboard = async () => {
-    if (providerPhone) {
-      await Clipboard.setStringAsync(providerPhone);
+    if (fetchedPhone) {
+      await Clipboard.setStringAsync(fetchedPhone);
       Alert.alert('Copied', 'Phone number copied to clipboard!');
     } else {
       Alert.alert('Error', 'No phone number available.');
     }
-  };
-
-  const goToMapScreen = () => {
-    navigation.navigate('MapScreen');
   };
 
   const handleJobDone = async () => {
@@ -159,12 +173,10 @@ const ChatUI = ({ route }) => {
 
   const closeCompletionModal = () => {
     setShowCompletionModal(false);
-
-    // Show payment reminder popup to the customer
     if (currentUser.uid === customerId) {
       Alert.alert(
         'Payment Reminder',
-        `Please pay Rs ${providerBid} to the service provider.`,
+        `Please pay Rs ${route.params.providerBid} to the service provider.`,
         [{ text: 'OK' }]
       );
     }
@@ -183,16 +195,13 @@ const ChatUI = ({ route }) => {
           <Text style={styles.info}>
             Talking to: {chatPartnerName || 'Unknown'}
           </Text>
+          <Text style={styles.info}>Agreed Amount:{route.params.providerBid} </Text>
         </View>
 
         <View style={styles.iconGroup}>
           <TouchableOpacity onPress={copyPhoneToClipboard} style={styles.iconBtn}>
             <Ionicons name="call" size={28} color="limegreen" />
           </TouchableOpacity>
-
-          {/* <TouchableOpacity onPress={goToMapScreen} style={styles.iconBtn}>
-            <Ionicons name="location-outline" size={28} color="#00BFFF" />
-          </TouchableOpacity> */}
         </View>
       </View>
 
@@ -228,21 +237,14 @@ const ChatUI = ({ route }) => {
         <Text style={styles.jobDoneButtonText}>Job Done</Text>
       </TouchableOpacity>
 
-      <Modal
-        visible={showCompletionModal}
-        transparent={true}
-        animationType="slide"
-      >
+      <Modal visible={showCompletionModal} transparent animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Job Completed!</Text>
             <Text style={styles.modalText}>
               Both parties have confirmed the job is complete.
             </Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={closeCompletionModal}
-            >
+            <TouchableOpacity style={styles.modalButton} onPress={closeCompletionModal}>
               <Text style={styles.modalButtonText}>OK</Text>
             </TouchableOpacity>
           </View>
@@ -251,12 +253,11 @@ const ChatUI = ({ route }) => {
     </KeyboardAvoidingView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 25,
-    paddingTop: 50,
+    paddingTop: 60,
     backgroundColor: '#121212',
   },
   header: {

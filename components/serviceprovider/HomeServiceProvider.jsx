@@ -71,14 +71,6 @@ const HomeServiceProvider = () => {
       </ScrollView>
 
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home-outline" size={24} color="#FFA500" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="list-outline" size={24} color="#FFA500" />
-          <Text style={styles.navText}>Bids</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => navigation.navigate('ServiceProviderProfile')}
