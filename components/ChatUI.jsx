@@ -171,16 +171,15 @@ const ChatUI = ({ route }) => {
     }
   };
 
+  // Modified function to navigate to JobComplete screen
   const closeCompletionModal = () => {
-    setShowCompletionModal(false);
-    if (currentUser.uid === customerId) {
-      Alert.alert(
-        'Payment Reminder',
-        `Please pay Rs ${route.params.providerBid} to the service provider.`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
+  setShowCompletionModal(false);
+  navigation.navigate('JobComplete', {
+    customerName: route.params.customerName,   // always the original customer
+    providerName: route.params.providerName,   // always the original provider
+    providerBid: route.params.providerBid,
+  });
+};
 
   return (
     <KeyboardAvoidingView
@@ -374,4 +373,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ChatUI; 
+export default ChatUI;

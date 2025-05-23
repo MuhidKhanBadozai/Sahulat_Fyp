@@ -21,7 +21,9 @@ import MapScreen from './components/serviceprovider/MapScreen';
 
 //import ChatScreen from './components/chat-server/ChatScreen';
 import ChatUI from './components/ChatUI';
-import JobDone from './components/JobDone';
+// import JobDone from './components/JobDone';
+
+import JobComplete from './components/JobComplete';
 
 
 
@@ -60,8 +62,8 @@ export default function App() {
               <Stack.Screen name="MapScreen" component={MapScreen} />
               {/* <Stack.Screen name="ChatScreen" component={ChatScreen} /> */}
               <Stack.Screen name="ChatUI" component={ChatUI} />
-              <Stack.Screen name="JobDone" component={JobDone} /> 
-
+              {/* <Stack.Screen name="JobDone" component={JobDone} />  */}
+              <Stack.Screen name="JobComplete" component={JobComplete} />
 
             </React.Fragment>
           ) : (
