@@ -117,6 +117,14 @@ const Description = () => {
     }
   };
 
+  const handlePriceChange = (text) => {
+    // Remove any dots or commas entered by the user
+    const filteredText = text.replace(/[.,]/g, "");
+    // Remove any non-numeric characters
+    const numericText = filteredText.replace(/[^0-9]/g, "");
+    setPrice(numericText);
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#111" }}
@@ -191,7 +199,7 @@ const Description = () => {
             placeholderTextColor="#aaa"
             keyboardType="numeric"
             value={price}
-            onChangeText={setPrice}
+            onChangeText={handlePriceChange}
           />
         </View>
 

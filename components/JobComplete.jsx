@@ -16,11 +16,11 @@ export default function JobComplete({ route }) {
         <Text style={styles.title}>Sahulat Hub</Text>
       </View>
 
-      {/* Animated Tick */}
+      {/* Animated Tick */}  
       <LottieView
         source={require('../assets/animatedtick.json')}
         autoPlay
-        loop={true}
+        loop={false}
         style={styles.animation}
       />
 

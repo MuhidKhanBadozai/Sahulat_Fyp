@@ -13,7 +13,7 @@ const Mapbox = () => {
   const [mapReady, setMapReady] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [userLocation, setUserLocation] = useState("Your Location");
+  const [userLocation, setUserLocation] = useState("Your Address");
   const [searchQuery, setSearchQuery] = useState("");
   const slideAnim = useState(new Animated.Value(-screenWidth))[0];
 

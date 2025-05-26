@@ -342,9 +342,14 @@ const IncomingJobs = ({ route }) => {
                   style={styles.bidInput}
                   keyboardType="numeric"
                   placeholder="Enter your bid amount"
-                  value={bidAmount}
-                  onChangeText={setBidAmount}
+                  value={bidAmount} 
+                  onChangeText={(text) => {
+                    // Remove commas and dots
+                    const cleanedText = text.replace(/[,.]/g, '');
+                    setBidAmount(cleanedText);
+                  }}
                 />
+
 
                 <Text style={styles.bidLabel}>Notes (Optional)</Text>
                 <TextInput
