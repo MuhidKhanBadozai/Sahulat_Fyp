@@ -1,119 +1,159 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TextInput, TouchableOpacity, Text, Image, Alert, Animated, Dimensions } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  Image,
+  Alert,
+  Animated,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import * as Location from 'expo-location'; // 📍 GPS & permissions
 import { useNavigation } from '@react-navigation/native';
-import { signOut } from "firebase/auth";
-import { auth } from "./firebaseConfig";
+import { signOut } from 'firebase/auth';
+import { auth } from './firebaseConfig';
 import UserProfile from './UserProfile';
 
 const screenWidth = Dimensions.get('window').width;
 
+const DEFAULT_REGION = {
+  latitude: 31.4945,
+  longitude: 74.3534,
+  latitudeDelta: 0.01,
+  longitudeDelta: 0.01,
+};
+
+const cityLocations = [
+  'DHA Phase 1','DHA Phase 2','DHA Phase 3','DHA Phase 4','DHA Phase 5','DHA Phase 6','Model Town','Gulberg','Johar Town','Bahria Town','Barki Rd','Paragon City','Wapda Town','Askari 10','Askari 9','Cantt','Garden Town','Shadman','Faisal Town','Allama Iqbal Town','Township','Green Town','Sabzazar','Iqbal Park','LDA Avenue','Fortress Stadium','Liberty Market','MM Alam Road','Anarkali','Shalimar','Samanabad','Dharampura'
+];
+
+const categories = [
+  { id: 1, name: 'Mechanic', icon: require('../assets/mechanic.png') },
+  { id: 2, name: 'Taxi', icon: require('../assets/taxi.png') },
+  { id: 3, name: 'Home Cleaning', icon: require('../assets/home_cleaning.png') },
+  { id: 4, name: 'Delivery', icon: require('../assets/delivery.png') },
+  { id: 5, name: 'Electrician', icon: require('../assets/electrician.png') },
+  { id: 6, name: 'Plumber', icon: require('../assets/plumber.png') },
+  { id: 7, name: 'Petroleum Emergency', icon: require('../assets/petrol.png') },
+];
+
 const Mapbox = () => {
   const [mapReady, setMapReady] = useState(false);
+  const [location, setLocation] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [userLocation, setUserLocation] = useState("Your Address");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [userLocation, setUserLocation] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
   const slideAnim = useState(new Animated.Value(-screenWidth))[0];
-
   const navigation = useNavigation();
 
   useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permission denied');
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        setLocation(loc.coords);
+      } catch (err) {
+        console.log(err);
+        setErrorMsg('Could not fetch location');
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
     const loadMap = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((res) => setTimeout(res, 1000));
       setMapReady(true);
     };
     loadMap();
   }, []);
 
-  const handleMenuPress = () => {
+  const openMenu = () => {
     setShowProfile(true);
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
   };
 
-  const handleCloseProfile = () => {
-    Animated.timing(slideAnim, {
-      toValue: -screenWidth,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => setShowProfile(false));
+  const closeMenu = () => {
+    Animated.timing(slideAnim, { toValue: -screenWidth, duration: 300, useNativeDriver: true }).start(() => setShowProfile(false));
   };
 
   const confirmLogout = async () => {
     try {
       await signOut(auth);
-      Alert.alert("Logged out", "You have been logged out successfully.");
-      navigation.replace("Login");
+      Alert.alert('Logged out', 'You have been logged out successfully.');
+      navigation.replace('Login');
     } catch (error) {
-      Alert.alert("Error", error.message);
+      Alert.alert('Error', error.message);
     }
   };
 
-  const handleCategorySelect = (categoryName) => {
-    setSelectedCategory(categoryName);
-  };
+  const handleCategorySelect = (name) => setSelectedCategory(name);
 
   const navigateToDescription = () => {
     if (!selectedCategory) {
-      Alert.alert("Error", "Please select a service category first");
+      Alert.alert('Error', 'Please select a service category first');
       return;
     }
-    navigation.navigate('Description', {
-      selectedCategory,
-      userLocation
-    });
+    navigation.navigate('Description', { selectedCategory, userLocation });
   };
 
-  const handleSearch = (text) => {
-    setSearchQuery(text);
+  const handleSearch = (txt) => setSearchQuery(txt);
+
+  const handleLocationChange = (txt) => {
+    setUserLocation(txt);
+    if (txt.length) {
+      const suggestions = cityLocations.filter((l) => l.toLowerCase().startsWith(txt.toLowerCase()));
+      setLocationSuggestions(suggestions);
+    } else {
+      setLocationSuggestions([]);
+    }
   };
 
-  const categories = [
-    { id: 1, name: 'Mechanic', icon: require('../assets/mechanic.png') },
-    { id: 2, name: 'Taxi', icon: require('../assets/taxi.png') },
-    { id: 3, name: 'Home Cleaning', icon: require('../assets/home_cleaning.png') },
-    { id: 4, name: 'Delivery', icon: require('../assets/delivery.png') },
-    { id: 5, name: 'Electrician', icon: require('../assets/electrician.png') },
-    { id: 6, name: 'Plumber', icon: require('../assets/plumber.png') },
-    { id: 7, name: 'Petroleum Emergency', icon: require('../assets/petrol.png') },
-  ];
+  const handleLocationSelect = (loc) => {
+    setUserLocation(loc);
+    setLocationSuggestions([]);
+  };
 
-  const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCategories = categories.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const region = location
+    ? { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 }
+    : DEFAULT_REGION;
+
+  if (!mapReady || (!location && !errorMsg)) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color="#FF9901" />
+        <Text style={{ marginTop: 8, color: '#fff' }}>Loading map…</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.searchBarContainer} onPress={handleMenuPress}>
+      <TouchableOpacity style={styles.searchBarContainer} onPress={openMenu}>
         <Ionicons name="menu" size={30} color="#888" />
       </TouchableOpacity>
 
-      {mapReady && (
-        <MapView
-  style={styles.map}
-  initialRegion={{
-    latitude: 31.4945,
-    longitude: 74.3534,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  }}
->
-  <Marker
-    coordinate={{ latitude: 31.4945, longitude: 74.3534 }}
-    title="Lahore Garrison University"
-    description="Main Campus, Sector C, DHA Phase 6, Lahore"
-  />
-</MapView>
-      )}
+      <MapView style={styles.map} region={region} showsUserLocation followsUserLocation>
+        {location && <Marker coordinate={location} title="You are here" description="Current position" />}
+      </MapView>
 
       {showProfile && (
         <Animated.View style={[styles.profileOverlay, { transform: [{ translateX: slideAnim }] }]}>
-          <UserProfile onClose={handleCloseProfile} onConfirmLogout={confirmLogout} />
+          <UserProfile onClose={closeMenu} onConfirmLogout={confirmLogout} />
         </Animated.View>
       )}
 
@@ -131,29 +171,18 @@ const Mapbox = () => {
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filteredCategories.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[
-                  styles.categoryButton,
-                  selectedCategory === item.name && styles.selectedCategoryButton
-                ]}
-                onPress={() => handleCategorySelect(item.name)}
-              >
-                <Image
-                  source={item.icon}
-                  style={[
-                    styles.icon,
-                    selectedCategory === item.name && styles.selectedIcon
-                  ]}
-                />
-                <Text style={styles.categoryText}>{item.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+          {filteredCategories.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.categoryButton, selectedCategory === item.name && styles.selectedCategoryButton]}
+              onPress={() => handleCategorySelect(item.name)}
+            >
+              <Image source={item.icon} style={[styles.icon, selectedCategory === item.name && styles.selectedIcon]} />
+              <Text style={styles.categoryText}>{item.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         <View style={styles.inputContainer}>
           <Ionicons name="location" size={20} color="orange" />
@@ -162,9 +191,19 @@ const Mapbox = () => {
             placeholder="Your Location"
             placeholderTextColor="#aaa"
             value={userLocation}
-            onChangeText={setUserLocation}
+            onChangeText={handleLocationChange}
           />
         </View>
+
+        {locationSuggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            {locationSuggestions.map((loc, idx) => (
+              <TouchableOpacity key={idx} onPress={() => handleLocationSelect(loc)}>
+                <Text style={styles.suggestionText}>{loc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <TouchableOpacity style={styles.findButton} onPress={navigateToDescription}>
           <Text style={styles.buttonText}>Go to Bidding</Text>
@@ -177,6 +216,8 @@ const Mapbox = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  map: { flex: 1 },
+  loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#222' },
   searchBarContainer: {
     position: 'absolute',
     top: 60,
@@ -191,7 +232,6 @@ const styles = StyleSheet.create({
     elevation: 5,
     zIndex: 1,
   },
-  map: { flex: 1, width: '100%', height: '100%' },
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
@@ -211,13 +251,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     width: '100%',
   },
-  input: {
-    flex: 1,
-    color: 'white',
-    marginLeft: 10,
-    height: 40, // FIXED: Increased from 20 to 40
-    fontSize: 16,
-  },
+  input: { flex: 1, color: 'white', marginLeft: 10, height: 40, fontSize: 16 },
   findButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -239,31 +273,11 @@ const styles = StyleSheet.create({
     marginRight: 10,
     width: 100,
   },
-  selectedCategoryButton: {
-    backgroundColor: '#FF9901',
-  },
-  icon: {
-    width: 50,
-    height: 50,
-    borderRadius: 0, // FIXED: Rounded properly
-    marginBottom: 5,
-    resizeMode: 'cover',
-  },
-  selectedIcon: {
-    borderColor: '#222',
-    borderWidth: 0,
-  },
-  categoryText: {
-    color: 'black',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  categories: {
-    color: 'white',
-    fontSize: 24,
-    padding: 10,
-    alignSelf: 'flex-start',
-  },
+  selectedCategoryButton: { backgroundColor: '#FF9901' },
+  icon: { width: 50, height: 50, marginBottom: 5, resizeMode: 'cover' },
+  selectedIcon: { borderColor: '#222', borderWidth: 0 },
+  categoryText: { color: 'black', fontSize: 12, textAlign: 'center' },
+  categories: { color: 'white', fontSize: 24, padding: 10, alignSelf: 'flex-start' },
   profileOverlay: {
     position: 'absolute',
     top: 0,
@@ -277,6 +291,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
     zIndex: 2,
+  },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    width: '100%',
+    borderRadius: 10,
+    marginBottom: 10,
+    maxHeight: 150,
+  },
+  suggestionText: {
+    padding: 10,
+    borderBottomColor: '#ccc',
+    borderBottomWidth: 1,
+    color: '#000',
   },
 });
 

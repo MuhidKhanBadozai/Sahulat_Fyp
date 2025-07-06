@@ -8,12 +8,13 @@ const Login = () => {
     const navigation = useNavigation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // Toggle state for password visibility
 
     const handleLogin = async () => {
         try {
             await signInWithEmailAndPassword(auth, email, password);
             Alert.alert("Success", "Logged in successfully!");
-            navigation.navigate('Continoueas'); // Change to your home screen
+            navigation.navigate('Continoueas');
         } catch (error) {
             Alert.alert("Error", error.message);
         }
@@ -34,13 +35,24 @@ const Login = () => {
                     onChangeText={setEmail} 
                     keyboardType="email-address"
                 />
-                <TextInput 
-                    style={styles.input} 
-                    placeholder="Password" 
-                    value={password} 
-                    onChangeText={setPassword} 
-                    secureTextEntry 
-                />
+
+                <View style={styles.passwordContainer}>
+                    <TextInput 
+                        style={[styles.input, { flex: 1 }]} 
+                        placeholder="Password" 
+                        value={password} 
+                        onChangeText={setPassword} 
+                        secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.showHideButton}
+                    >
+                        <Text style={styles.showHideText}>
+                            {showPassword ? 'Hide' : 'Show'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
 
                 <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
                     <Text style={styles.loginButtonText}>Log in</Text>
@@ -96,6 +108,21 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         paddingHorizontal: 10,
         marginBottom: 15,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: 300,
+        borderBottomWidth: 1,
+        borderColor: 'white',
+        marginBottom: 15,
+    },
+    showHideButton: {
+        paddingHorizontal: 10,
+    },
+    showHideText: {
+        color: '#FF9901',
+        fontWeight: 'bold',
     },
     loginButton: {
         width: 300,

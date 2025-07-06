@@ -8,6 +8,7 @@ const ServiceProviderLogin = () => {
     const navigation = useNavigation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // 👈 For toggling visibility
 
     const handleLogin = async () => {
         try {
@@ -34,13 +35,24 @@ const ServiceProviderLogin = () => {
                     onChangeText={setEmail} 
                     keyboardType="email-address"
                 />
-                <TextInput 
-                    style={styles.input} 
-                    placeholder="Password" 
-                    value={password} 
-                    onChangeText={setPassword} 
-                    secureTextEntry 
-                />
+
+                <View style={styles.passwordContainer}>
+                    <TextInput 
+                        style={[styles.input, { flex: 1 }]} 
+                        placeholder="Password" 
+                        value={password} 
+                        onChangeText={setPassword} 
+                        secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity 
+                        style={styles.showButton} 
+                        onPress={() => setShowPassword(!showPassword)}
+                    >
+                        <Text style={{ color: '#FF9901', fontWeight: 'bold' }}>
+                            {showPassword ? 'Hide' : 'Show'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
 
                 <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
                     <Text style={styles.loginButtonText}>Log in</Text>
@@ -96,6 +108,18 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         paddingHorizontal: 10,
         marginBottom: 15,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderColor: 'white',
+        marginBottom: 15,
+        width: 300,
+    },
+    showButton: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
     },
     loginButton: {
         width: 300,

@@ -9,7 +9,7 @@ const firebaseConfig = {
   authDomain: "sahulat-hub-e68ba.firebaseapp.com",
   projectId: "sahulat-hub-e68ba",
   storageBucket: "sahulat-hub-e68ba.appspot.com",
-  messagingSenderId: "798656252072",
+  messagingSenderId: "798656252072", 
   appId: "1:798656252072:web:e00c7b12eb1b2602b59a9d",
   measurementId: "G-2R2KEGMCKK",
 };
