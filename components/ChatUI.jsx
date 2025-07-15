@@ -5,17 +5,18 @@ import {
   StyleSheet,
   FlatList,
   TextInput,
-  Button,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useNavigation } from '@react-navigation/native';
-
 import { auth, db } from './firebaseConfig';
 import {
   collection,
@@ -32,6 +33,7 @@ import {
 const ChatUI = ({ route }) => {
   const navigation = useNavigation();
   const currentUser = auth.currentUser;
+
   const {
     customerId,
     customerName,
@@ -47,9 +49,7 @@ const ChatUI = ({ route }) => {
   if (isServiceProvider && (!customerId || !providerId || !jobTitle)) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>
-          Error: Missing parameters! Please ensure the correct data is passed.
-        </Text>
+        <Text style={styles.errorText}>Error: Missing parameters!</Text>
       </View>
     );
   }
@@ -57,34 +57,25 @@ const ChatUI = ({ route }) => {
   const chatPartnerId = currentUser.uid === customerId ? providerId : customerId;
   const chatPartnerName = currentUser.uid === customerId ? providerName : customerName;
   const senderId = currentUser?.uid || 'unknown_user';
+  const jobId = `${customerId}_${providerId}_${jobTitle.replace(/\s+/g, '_')}`;
 
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [jobStatus, setJobStatus] = useState({
-    customerConfirmed: false,
-    providerConfirmed: false,
-  });
+  const [jobStatus, setJobStatus] = useState({ customerConfirmed: false, providerConfirmed: false });
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [fetchedPhone, setFetchedPhone] = useState(routePhone || '');
-
-  const jobId = `${customerId}_${providerId}_${jobTitle.replace(/\s+/g, '_')}`;
 
   useEffect(() => {
     const messagesRef = collection(db, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
 
     const unsubscribeMessages = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
+      const fetchedMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       const filteredMessages = fetchedMessages.filter(
         (msg) =>
           (msg.from === senderId && msg.to === chatPartnerId) ||
           (msg.from === chatPartnerId && msg.to === senderId)
       );
-
       setMessages(filteredMessages);
     });
 
@@ -98,7 +89,6 @@ const ChatUI = ({ route }) => {
       }
     });
 
-    // Fetch provider phone number if not provided
     if (!routePhone && providerId) {
       const fetchPhone = async () => {
         try {
@@ -161,144 +151,135 @@ const ChatUI = ({ route }) => {
 
       await setDoc(jobStatusRef, update, { merge: true });
 
-      Alert.alert(
-        'Confirmation Sent',
-        `Waiting for ${currentUser.uid === customerId ? providerName : customerName} to confirm.`
-      );
+      Alert.alert('Confirmation Sent', `Waiting for ${chatPartnerName} to confirm.`);
     } catch (error) {
       console.error('Error updating job status:', error);
       Alert.alert('Error', 'Failed to update job status.');
     }
   };
 
-  // Modified function to navigate to JobComplete screen
   const closeCompletionModal = () => {
-  setShowCompletionModal(false);
-  navigation.navigate('JobComplete', {
-    customerName: route.params.customerName,   // always the original customer
-    providerName: route.params.providerName,   // always the original provider
-    providerBid: route.params.providerBid,
-  });
-};
+    setShowCompletionModal(false);
+    navigation.navigate('JobComplete', {
+      customerName,
+      providerName,
+      providerBid,
+    });
+  };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Chat about: {jobTitle || 'Job'}</Text>
-          <Text style={styles.info}>You: {currentUser.email}</Text>
-          <Text style={styles.info}>
-            Talking to: {chatPartnerName || 'Unknown'}
-          </Text>
-          <Text style={styles.info}>Agreed Amount:{route.params.providerBid} </Text>
-        </View>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.title}>{jobTitle || 'Job Title'}</Text>
+                <Text style={styles.subInfo}>You: {currentUser.email}</Text>
+                <Text style={styles.subInfo}>With: {chatPartnerName}</Text>
+                <Text style={styles.subInfo}>Bid: Rs {providerBid}</Text>
+              </View>
+              <TouchableOpacity onPress={copyPhoneToClipboard}>
+                <Ionicons name="call" size={28} color="#32CD32" />
+              </TouchableOpacity>
+            </View>
 
-        <View style={styles.iconGroup}>
-          <TouchableOpacity onPress={copyPhoneToClipboard} style={styles.iconBtn}>
-            <Ionicons name="call" size={28} color="limegreen" />
-          </TouchableOpacity>
-        </View>
-      </View>
+            <FlatList
+              data={[...messages].reverse()}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View
+                  style={[
+                    styles.messageBubble,
+                    item.from === senderId ? styles.sent : styles.received,
+                  ]}
+                >
+                  <Text style={styles.messageText}>{item.text}</Text>
+                </View>
+              )}
+              contentContainerStyle={styles.chatBox}
+              inverted
+            />
 
-      <FlatList
-        data={[...messages].reverse()}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Text
-            style={[
-              styles.message,
-              item.from === senderId ? styles.sent : styles.received,
-            ]}
-          >
-            {item.text}
-          </Text>
-        )}
-        contentContainerStyle={styles.chatBox}
-        inverted
-      />
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type a message..."
+                placeholderTextColor="#aaa"
+                value={inputMessage}
+                onChangeText={setInputMessage}
+              />
+              <TouchableOpacity onPress={sendMessage} style={styles.sendBtn}>
+                <Ionicons name="send" size={22} color="white" />
+              </TouchableOpacity>
+            </View>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Type your message..."
-          placeholderTextColor="#aaa"
-          value={inputMessage}
-          onChangeText={setInputMessage}
-        />
-        <Button title="Send" onPress={sendMessage} />
-      </View>
-
-      <TouchableOpacity style={styles.jobDoneButton} onPress={handleJobDone}>
-        <Text style={styles.jobDoneButtonText}>Job Done</Text>
-      </TouchableOpacity>
-
-      <Modal visible={showCompletionModal} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Job Completed!</Text>
-            <Text style={styles.modalText}>
-              Both parties have confirmed the job is complete.
-            </Text>
-            <TouchableOpacity style={styles.modalButton} onPress={closeCompletionModal}>
-              <Text style={styles.modalButtonText}>OK</Text>
+            <TouchableOpacity style={styles.jobDoneButton} onPress={handleJobDone}>
+              <Text style={styles.jobDoneButtonText}>Job Done</Text>
             </TouchableOpacity>
+
+            <Modal visible={showCompletionModal} transparent animationType="slide">
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>🎉 Job Completed!</Text>
+                  <Text style={styles.modalText}>
+                    Both customer and provider have confirmed the job.
+                  </Text>
+                  <TouchableOpacity style={styles.modalBtn} onPress={closeCompletionModal}>
+                    <Text style={styles.modalBtnText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
           </View>
-        </View>
-      </Modal>
-    </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#121212',
+  },
   container: {
     flex: 1,
-    padding: 25,
-    paddingTop: 60,
     backgroundColor: '#121212',
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconGroup: {
-    flexDirection: 'row',
-  },
-  iconBtn: {
-    marginLeft: 15,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderColor: '#333',
+    paddingBottom: 12,
   },
   title: {
     fontSize: 20,
+    color: '#FFA500',
     fontWeight: 'bold',
-    color: '#FFA500',
-    marginBottom: 4,
   },
-  info: {
-    fontSize: 16,
+  subInfo: {
+    fontSize: 14,
     color: '#FFA500',
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 18,
-    textAlign: 'center',
-    marginTop: 20,
+    marginTop: 2,
   },
   chatBox: {
     flexGrow: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 8,
+    paddingVertical: 8,
   },
-  message: {
-    fontSize: 16,
+  messageBubble: {
+    maxWidth: '80%',
     padding: 10,
     marginVertical: 4,
     borderRadius: 8,
-    maxWidth: '80%',
-    color: '#fff',
   },
   sent: {
     alignSelf: 'flex-end',
@@ -308,68 +289,81 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#333',
   },
-  inputContainer: {
+  messageText: {
+    color: '#fff',
+    fontSize: 15,
+  },
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderTopColor: '#444',
-    borderTopWidth: 1,
-    paddingTop: 8,
-  },
-  input: {
-    flex: 1,
     backgroundColor: '#1e1e1e',
-    color: '#fff',
+    borderRadius: 25,
+    paddingHorizontal: 10,
+    marginTop: 10,
+  },
+  textInput: {
+    flex: 1,
     padding: 10,
-    borderRadius: 8,
-    marginRight: 8,
+    color: '#fff',
+  },
+  sendBtn: {
+    backgroundColor: '#FFA500',
+    padding: 10,
+    borderRadius: 50,
+    marginLeft: 6,
   },
   jobDoneButton: {
     backgroundColor: '#4CAF50',
-    padding: 15,
+    padding: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 10,
+    marginTop: 16,
   },
   jobDoneButtonText: {
-    color: 'white',
+    color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   modalContent: {
     backgroundColor: '#1e1e1e',
-    padding: 20,
+    padding: 24,
     borderRadius: 10,
-    width: '80%',
+    width: '85%',
   },
   modalTitle: {
     color: '#FFA500',
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: 'center',
   },
   modalText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     marginBottom: 20,
     textAlign: 'center',
   },
-  modalButton: {
+  modalBtn: {
     backgroundColor: '#FF8C00',
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 6,
     alignItems: 'center',
   },
-  modalButtonText: {
-    color: 'white',
+  modalBtnText: {
+    color: '#fff',
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 
