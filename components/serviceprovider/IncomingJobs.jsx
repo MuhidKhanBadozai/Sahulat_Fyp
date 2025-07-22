@@ -249,6 +249,12 @@ const IncomingJobs = ({ route }) => {
       return;
     }
 
+    // Check if bid amount is at least 100 Rs
+    if (parseFloat(bidAmount) < 100) {
+      Alert.alert("Error", "Bid amount must be at least Rs 100");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -341,7 +347,7 @@ const IncomingJobs = ({ route }) => {
                 <TextInput
                   style={styles.bidInput}
                   keyboardType="numeric"
-                  placeholder="Enter your bid amount"
+                  placeholder="Enter your bid amount (minimum Rs 100)"
                   value={bidAmount} 
                   onChangeText={(text) => {
                     // Remove commas and dots
@@ -349,7 +355,6 @@ const IncomingJobs = ({ route }) => {
                     setBidAmount(cleanedText);
                   }}
                 />
-
 
                 <Text style={styles.bidLabel}>Notes (Optional)</Text>
                 <TextInput

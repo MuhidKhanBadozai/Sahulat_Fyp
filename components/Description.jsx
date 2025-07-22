@@ -84,6 +84,12 @@ const Description = () => {
       return;
     }
 
+    const numericPrice = parseInt(price);
+    if (isNaN(numericPrice) || numericPrice < 100) {
+      Alert.alert("Error", "Minimum price should be at least Rs 100.");
+      return;
+    }
+
     try {
       const newJobRef = await addDoc(collection(db, "upcoming_jobs"), {
         userId: user.uid,
@@ -93,7 +99,7 @@ const Description = () => {
         title,
         description,
         location,
-        price,
+        price: numericPrice,
         timestamp: new Date(),
       });
 
@@ -118,9 +124,7 @@ const Description = () => {
   };
 
   const handlePriceChange = (text) => {
-    // Remove any dots or commas entered by the user
     const filteredText = text.replace(/[.,]/g, "");
-    // Remove any non-numeric characters
     const numericText = filteredText.replace(/[^0-9]/g, "");
     setPrice(numericText);
   };
@@ -195,7 +199,7 @@ const Description = () => {
           <Text style={styles.currency}>Rs</Text>
           <TextInput
             style={styles.priceInput}
-            placeholder="Enter price"
+            placeholder="Enter Price"
             placeholderTextColor="#aaa"
             keyboardType="numeric"
             value={price}
